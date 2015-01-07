@@ -1378,7 +1378,7 @@ function! s:normalizeUrl(url)
 endfunction
 
 function! s:neglectNeedlessTags(output)
-  return substitute(a:output,'<[/]\{0,1\}\(_symbol\|_id\|intenal\|pre_int\|img_alt\|nobr\).\{-\}>','','g')
+  return substitute(a:output,'<[/]\{0,1\}\(_symbol\|_id\|intenal\|pre_int\|img_alt\|nobr\).\{-\}>\n\?','','g')
 endfunction
 
 function! s:decordeEntRef(str)
