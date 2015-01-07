@@ -1360,10 +1360,9 @@ function! s:nr2hex(nr)
 endfunction
 
 function! s:isHttpURL(str)
-  if stridx(a:str, 'http://') == 0 || stridx(a:str, 'https://') == 0
-    return 1
-  endif
-  return 0
+  return (stridx(a:str, 'http://') == 0 ||
+        \ stridx(a:str, 'https://') == 0 ||
+        \ !empty(matchstr(a:str, "..\\...")))
 endfunction
 
 function! s:normalizeUrl(url)
