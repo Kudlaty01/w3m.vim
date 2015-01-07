@@ -262,6 +262,8 @@ function! w3m#Open(mode, ...)
   if use_filter == 0
     if s:isHttpURL(a:000[0])
       let url = s:normalizeUrl(a:000[0])
+    elseif !empty(matchstr(a:000[0], "..\\..."))
+      let url = s:normalizeUrl(a:000[0])
     else
       let url = printf(g:w3m#search_engine, join(a:000, ' '))
     endif
@@ -1361,8 +1363,7 @@ endfunction
 
 function! s:isHttpURL(str)
   return (stridx(a:str, 'http://') == 0 ||
-        \ stridx(a:str, 'https://') == 0 ||
-        \ !empty(matchstr(a:str, "..\\...")))
+        \ stridx(a:str, 'https://') == 0)
 endfunction
 
 function! s:normalizeUrl(url)
