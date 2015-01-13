@@ -306,6 +306,11 @@ function! w3m#Open(mode, ...)
   "resolve charset from header and body(META)
   let b:charset = &encoding
   let header = split(s:system(substitute(cmdline, "-halfdump", "-dump_head", "")), '\n')
+  if s:resolveRedirection(header) == 1
+    let g:test = b:redirection
+    call w3m#Open(g:w3m#OPEN_NORMAL, b:redirection)
+    return
+  endif
   if s:resolveCharset(header) == 0
     let body = split(s:system(substitute(cmdline, "-halfdump", "-dump_source", "")), '\n')
     let max_analize_line = 20
@@ -346,6 +351,16 @@ function! w3m#Open(mode, ...)
   if anchor != ''
     call s:moveToAnchor(anchor)
   endif
+endfunction
+
+function! s:resolveRedirection(header)
+  let ret = 0
+  let location = filter(a:header, 'v:val =~? "^location"')
+  if len(location) > 0
+    let b:redirection = matchstr(location[0], '\clocation\s*:\s*\zs.*')
+    let ret = 1
+  endif
+  return ret
 endfunction
 
 function! s:resolveCharset(header)
