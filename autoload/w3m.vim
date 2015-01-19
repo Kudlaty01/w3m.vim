@@ -702,15 +702,15 @@ function! s:keymap()
     nmap <buffer><TAB>       <Plug>(w3m-next-link)
     nmap <buffer><S-TAB>     <Plug>(w3m-prev-link)
     nmap <buffer><BS>        <Plug>(w3m-back)
-    nmap <buffer><A-LEFT>    <Plug>(w3m-back)
-    nmap <buffer><A-RIGHT>   <Plug>(w3m-forward)
+    nmap <buffer><S-h>       <Plug>(w3m-back)
+    nmap <buffer><S-l>       <Plug>(w3m-forward)
     nmap <buffer>s           <Plug>(w3m-toggle-syntax)
     nmap <buffer>c           <Plug>(w3m-toggle-use-cookie)
     nmap <buffer>=           <Plug>(w3m-show-link)
     nmap <buffer>/           <Plug>(w3m-search-start)
     nmap <buffer>*           *<Plug>(w3m-search-end)
     nmap <buffer>#           #<Plug>(w3m-search-end)
-    nmap <buffer><m-d>       <Plug>(w3m-address-bar)
+    nmap <buffer>o         <Plug>(w3m-address-bar)
     exe 'nmap <buffer>' . g:w3m#hit_a_hint_key . ' <Plug>(w3m-hit-a-hint)'
   endif
 endfunction

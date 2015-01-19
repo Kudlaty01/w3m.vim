@@ -112,7 +112,7 @@ Settings
     let g:w3m#hit_a_hint_key = 'f'
 
 ###Specify Default Search Engine:###
-    let g:w3m#search_engine = 
+    let g:w3m#search_engine =
         \ 'http://search.yahoo.co.jp/search?search.x=1&fr=top_ga1_sa_124&tid=top_ga1_sa_124&ei=' . &encoding . '&aq=&oq=&p='
 
 ###Disable Default Keymap:###
@@ -129,7 +129,7 @@ You set as follows if you do not want to use vimproc.
 By default links under the curosr are highlighted. Turn off with one of the following
 
     unlet g:w3m#set_hover_on
-    let g:w3m#hover_set_on = -1 
+    let g:w3m#hover_set_on = -1
     " a value less than or equal to 0 will turn it off
 
     " set delay time until highlighting
@@ -156,13 +156,13 @@ Default Keymaps
 * &lt;Space&gt;   Scroll down.
 * &lt;S-Space&gt; Scroll up.
 * &lt;BS&gt;      Back page.
-* &lt;A-LEFT&gt;  Back page.
-* &lt;A-RIGHT&gt; Forward page.
+* &lt;s-H&gt;  Back page.
+* &lt;s-L&gt; Forward page.
 * =         Show href under the cursor.
 * f         Hit-A-Hint.
 * s         Toggle Syntax On/Off.
 * c         Toggle Cookie On/Off.
-* &lt;M-D&gt;     Edit current url.
+* &lt;o&gt;     Edit current url.
 
 ScreenShots
 -----------
@@ -197,8 +197,8 @@ HISTORY
 * Add :W3mHistory
 * Add :W3mHistoryClear
 * Add syntax/w3m.vim
-* Add w3m#api#getHistoryList() function 
-* Add w3m#api#openHistory() function 
+* Add w3m#api#getHistoryList() function
+* Add w3m#api#openHistory() function
 
 ### v0.8.3 by yuratomo
 * Fixed bug when w3m#EditAddress()
