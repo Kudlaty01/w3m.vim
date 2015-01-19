@@ -1318,7 +1318,6 @@ function! w3m#HitAHintStart()
       let link_e = item.col+strlen(index)
       let line = getline(item.line)
 	  let hint_chars = s:get_hint_chars(index)
-	  echom hint_chars
       let line = strpart(line, 0, link_s) . '@' . hint_chars . strpart(line, link_e)
       setlocal modifiable
       call setline(item.line, line)
