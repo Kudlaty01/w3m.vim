@@ -1295,6 +1295,18 @@ function! s:applyEditedInputValues()
   endfor
 endfunction
 
+function! s:get_hint_chars(index)
+	let i = a:index
+	let keys = split(g:w3m#hint_chars, '\W\?')
+	let key_len = len(keys)
+	let str = ''
+	while (i > 0)
+		let str .= keys[i % key_len]
+		let i = i / key_len
+	endwhile
+	return str
+endfunction
+
 function! w3m#HitAHintStart()
   if !exists('b:tag_list')
     return
@@ -1305,7 +1317,9 @@ function! w3m#HitAHintStart()
       let link_s = item.col-1
       let link_e = item.col+strlen(index)
       let line = getline(item.line)
-      let line = strpart(line, 0, link_s) . '@' . index . strpart(line, link_e)
+	  let hint_chars = s:get_hint_chars(index)
+	  echom hint_chars
+      let line = strpart(line, 0, link_s) . '@' . hint_chars . strpart(line, link_e)
       setlocal modifiable
       call setline(item.line, line)
       setlocal nomodifiable

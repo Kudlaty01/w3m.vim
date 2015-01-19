@@ -80,6 +80,10 @@ if !exists('g:w3m#hover_delay_time')
   let g:w3m#hover_delay_time = 100
 endif
 
+if !exists('g:w3m#hint_chars')
+	let g:w3m#hint_chars = 'asdfghjkl;'
+endif
+
 call add(g:w3m#user_agent_list, {'name':'w3m',     'agent':''})
 call add(g:w3m#user_agent_list, {'name':'Chrome',  'agent':'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.187 Safari/535.1'})
 call add(g:w3m#user_agent_list, {'name':'Firefox', 'agent':'Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1'})
