@@ -18,7 +18,7 @@ function! w3m#history#Regist(title, params)
     let idx += 1
   endfor
   call add(g:w3m#history#list, {'title' : a:title, 'params' : a:params} )
-  if len(g:w3m#history#list) > g:w3m#max_history_num
+  if len(g:w3m#history#list) > g:w3m_options['max_history_num']
     call remove(g:w3m#history#list, 0)
   endif
 endfunction
@@ -69,7 +69,12 @@ function! w3m#history#Show()
     let num = input('Please input history number:', '')
     let item = g:w3m#history#list[num]
     if num != '' && num >= 0 && num < len(g:w3m#history#list)
-      call w3m#api#openHistory(item)
+            if len(a:item.params) > 1
+                    call w3m#Open(a:item.params[0], join(a:item.params[1:], ' '))
+            else
+                    call w3m#Open(a:item.params[0])
+            endif
+        endif
     endif
   endif
 endfunction

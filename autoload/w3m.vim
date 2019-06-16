@@ -1,20 +1,14 @@
 " File: autoload/w3m.vim
-" Last Modified: 2012.04.04
-" Author: yuratomo (twitter @yusetomo)
+" OriginalAuthor: yuratomo (twitter @yusetomo)
+" Author: matsuhav
 
 let s:save_cpo = &cpo
 set cpo&vim
 
-let s:w3m_title = 'w3m'
 let s:tmp_option = ''
 let s:message_adjust = 20
 let [s:TAG_START,s:TAG_END,s:TAG_BOTH,s:TAG_UNKNOWN] = range(4)
-
-if has('win32')
-  let s:abandon_error = ' 2> NUL'
-else
-  let s:abandon_error = ' 2> /dev/null'
-endif
+let s:body_charset_lines = 20
 
 call w3m#history#Load()
 
@@ -27,7 +21,7 @@ function! w3m#BufWinLeave()
 endfunction
 
 function! w3m#CheckUnderCursor()
-  let [cl,cc] = [ line('.'), col('.') ]
+  let [cl,cc] = [line('.'), col('.')]
   let tstart = -1
   let tidx = 0
   for tag in b:tag_list
@@ -61,16 +55,11 @@ function! w3m#CheckUnderCursor()
   endwhile
 endfunction
 
-function! w3m#ShowUsage()
-  echo "[Usage] :W3m url"
-  echo "example :W3m http://www.yahoo.co.jp"
-endfunction
-
 function! w3m#ShowTitle()
   let cols = winwidth(0) - &numberwidth
 
   " resolve title from cache
-  if has_key(b:history[b:history_index], 'title') 
+  if has_key(b:history[b:history_index], 'title')
     call s:message( strpart(b:history[b:history_index].title, 0, cols - s:message_adjust) )
     return
   endif
@@ -91,276 +80,152 @@ function! w3m#ShowTitle()
 endfunction
 
 function! w3m#ShowSourceAndHeader()
-  if exists('b:last_url')
-    let cmdline = join( [ g:w3m#command, s:tmp_option, g:w3m#option, '"' . b:last_url . '"' ], ' ')
-    new
-    execute '%!'.substitute(cmdline, "-halfdump", "-dump_both", "")
-  endif
+        let l:cmdline = join([g:w3m_options['command'], s:tmp_option, g:w3m_options['option'], '''' . b:last_url . '''' ], ' ')
+        new
+        execute '%!' . substitute(l:cmdline, "-halfdump", "-dump_both", "")
 endfunction
 
 function! w3m#ShowDump()
-  if exists('b:last_url')
-    let cmdline = join( [ g:w3m#command, s:tmp_option, g:w3m#option, '"' . b:last_url . '"' ], ' ')
-    new
-    call setline(1, split(s:system(cmdline), '\n'))
-  endif
+        let l:cmdline = join([g:w3m_options['command'], s:tmp_option, g:w3m_options['option'], '''' . b:last_url . '''' ], ' ')
+        new
+        call setline(1, split(s:system(l:cmdline), '\n'))
 endfunction
 
 function! w3m#ShowExternalBrowser()
-  if exists('g:w3m#external_browser') && exists('b:last_url')
-    call s:system(g:w3m#external_browser . ' "' . b:last_url . '"')
-  endif
+        if g:w3m_options['external_browser'] != ''
+                call s:system(g:w3m_options['external_browser'] . ' ''' . b:last_url . '''')
+        endif
 endfunction
 
 function! w3m#ShowURL()
-  if exists('b:last_url')
-    call s:message(b:last_url)
-  endif
+        call s:message(b:last_url)
 endfunction
 
-function! w3m#CopyUrl(to)
-  if exists('b:last_url')
-    call setreg(a:to, b:last_url)
-  endif
+function! w3m#CopyUrl(reg)
+        call setreg(a:reg, b:last_url)
 endfunction
 
 function! w3m#Reload()
-  if exists('b:last_url')
-    call w3m#Open(g:w3m#OPEN_NORMAL, b:last_url)
-  endif
+        call w3m#Open(b:last_url)
 endfunction
 
 function! w3m#EditAddress()
-  if exists('b:last_url')
-    let url = input('url:', b:last_url)
-    if url != ""
-      call w3m#Open(g:w3m#OPEN_NORMAL, url)
-      echo url
-    endif
-  endif
+        let l:url = input('url:', b:last_url)
+        if l:url != ''
+                call w3m#Open(l:url)
+                echo l:url
+        endif
 endfunction
 
-function! w3m#SetUserAgent(name, reload)
-  let change = 0
-  for item in g:w3m#user_agent_list
-    if item.name == a:name
-      let g:user_agent = item.agent
-      let change = 1
-      break
-    endif
-  endfor
-  if change == 1 && a:reload == 1
-    call w3m#Reload()
-  endif
+function! w3m#SetUserAgent(name)
+        if has_key(g:w3m_useragents, a:name)
+                let g:w3m_options['user_agent'] = g:w3m_useragents[a:name]
+                call w3m#Reload()
+        endif
 endfunction
 
-function! w3m#ListUserAgent(A, L, P)
-  let items = []
-  for item in g:w3m#user_agent_list
-    if item.name =~ '^'.a:A
-      call add(items, item.name)
-    endif
-  endfor
-  return items
-endfunction
-
-function! w3m#MatchSearchStart(key)
-  cnoremap <buffer> <CR> <CR>:call w3m#MatchSearchEnd()<CR>
-  cnoremap <buffer> <ESC> <ESC>:call w3m#MatchSearchEnd()<CR>
-  nnoremap <buffer> <ESC> <ESC>:call w3m#MatchSearchEnd()<CR>
-  call feedkeys(a:key, 'n')
-endfunction
-
-function! w3m#MatchSearchEnd()
-  cnoremap <buffer> <CR> <CR>
-  cnoremap <buffer> <ESC> <ESC>
-  nnoremap <buffer> <ESC> <ESC>
-  if exists('b:last_match_id') && b:last_match_id != -1
-    try 
-      call matchdelete(b:last_match_id)
-    catch
-    endtry
-  endif
-  let keyword = histget("search", -1)
-  if keyword == '^.*$\n'
-    return
-  endif
-  let b:last_match_id = matchadd("Search", keyword)
-endfunction
-
-function! w3m#ToggleSyntax()
-  if b:enable_syntax == 0
-    cal w3m#ChangeSyntaxOnOff(1)
-  else
-    cal w3m#ChangeSyntaxOnOff(0)
-  endif
-endfunction
-
-function! w3m#ChangeSyntaxOnOff(mode)
-  let b:enable_syntax = a:mode
-  if a:mode == 0
-    call clearmatches()
-    call s:message("syntax off")
-  else
-    call s:applySyntax()
-    call s:message("syntax on")
-  endif
+function! w3m#ToggleSyntax(...)
+        let b:enable_syntax = a:0 == 0 ? !b:enable_syntax : a:1
+        if b:enable_syntax == 0
+                call clearmatches()
+        else
+                call s:applySyntax()
+        endif
+        call s:message('syntax ' . b:enable_syntax ? 'on' : 'off')
 endfunction
 
 function! w3m#ToggleUseCookie()
-  if g:w3m#option_use_cookie == 0
-    let g:w3m#option_use_cookie = 1
-    call s:message("use_cookie on")
-  else
-    let g:w3m#option_use_cookie = 0
-    call s:message("use_cookie off")
-  endif
+        let g:w3m_options['use_cookie'] = !g:w3m_options['use_cookie']
+        call s:message('use_cookie ' . g:w3m_options['use_cookie'] ? 'on' : 'off')
 endfunction
 
-function! w3m#Open(mode, ...)
-  if len(a:000) == 0
-    if exists('g:w3m#homepage')
-      call w3m#Open(a:mode, g:w3m#homepage)
-    else
-      call w3m#ShowUsage()
-    endif
-    return
-  endif
-  if a:mode == g:w3m#OPEN_TAB
-    tabe
-  elseif a:mode == g:w3m#OPEN_SPLIT
-    new
-  elseif a:mode == g:w3m#OPEN_VSPLIT && has('vertsplit')
-    vnew
-  endif
-
-  call s:prepare_buffer()
-  if b:history_index >= 0 && b:history_index < len(b:history)
-    let b:history[b:history_index].curpos = [ line('.'), col('.') ]
-  endif
-
-  "Load search engines and page filters
-  call w3m#search_engine#Load()
-  call w3m#page_filter#Load()
-
-  "Is the search-engine specified?
-  let use_filter = 0
-  for se in g:w3m#search_engine_list
-    if has_key(se, 'name') && has_key(se, 'url')
-      if se.name == a:000[0]
-        "preproc for search-engine
-        if has_key(se, 'preproc')
-          call se.preproc()
+function! w3m#Open(...)
+        if a:0 == 0
+                let l:url = g:w3m_options['home']
+        elseif a:0 == 1
+                let l:url = a:1
+        elseif a:0 == 2
+                " a:1(searchengine) a:2(searchword)
+                if has_key(g:w3m_searchengines, a:1)
+                        let l:url = printf(g:w3m_searchengines[a:1], a:2)
+                else
+                        echo "No such a engine. Using default one."
+                        let l:url = printf(g:w3m_searchengines[g:w3m_options['default_searchengine']], a:2)
+                endif
         endif
-        let url = printf(se.url, join(a:000[1:], ' '))
-        let use_filter = 1
-        break
-      endif
-    endif
-  endfor
 
-  if use_filter == 0
-    if s:isHttpURL(a:000[0])
-      let url = s:normalizeUrl(a:000[0])
-    else
-      let url = printf(g:w3m#search_engine, join(a:000, ' '))
-    endif
-
-    "Is the url match page-filter pattern?
-    for se in g:w3m#page_filter_list
-      if has_key(se, 'pattern')
-        if match(url, se.pattern) != -1
-          "preproc for page-filter
-          if has_key(se, 'preproc')
-            call se.preproc()
-          endif
-          let use_filter = 1
-          break
+        call s:prepare_buffer()
+        if b:history_index >= 0 && b:history_index < len(b:history)
+                let b:history[b:history_index].curpos = [line('.'), col('.')]
         endif
-      endif
-    endfor
-  endif
 
-  "Is url include anchor?
-  let anchor = ''
-  let aidx = stridx(url, '#')
-  if aidx >= 0
-    let anchor = url[ aidx : ]
-    let url = url[0 : aidx - 1 ]
-  endif
+        "anchor
+        let l:anchor = ''
+        let l:anchorindex = stridx(url, '#')
+        if l:anchorindex >= 0
+                let l:anchor = l:url[l:anchorindex :]
+                let l:url = l:url[0 : l:anchorindex - 1]
+        endif
 
-  "create command
-  let cols = winwidth(0) - &numberwidth
-  let cmdline = s:create_command(url, cols)
-  call s:message( strpart('open ' . url, 0, cols - s:message_adjust) )
+        "create command
+        let l:cols = winwidth(0) - &numberwidth
+        let l:cmdline = s:create_command(url, cols)
+        call s:message(strpart('open ' . url, 0, cols - s:message_adjust))
 
-  "postproc for filter
-  if use_filter == 1
-    if has_key(se, 'postproc')
-      call se.postproc()
-    endif
-  endif
+        "resolve charset from header and body(META)
+        let b:charset = &encoding
+        let l:header = split(s:system(substitute(l:cmdline, "-halfdump", "-dump_head", "")), '\n')
+        if s:resolveCharset(l:header)
+                let l:body = split(s:system(substitute(l:cmdline, "-halfdump", "-dump_source", "")), '\n')
+                if s:resolveCharset(l:body[0 : len(l:body) < s:body_charset_lines ? len(l:body) - 1 : s:body_charset_lines])
+                        b:charset = 'utf-8'
+                endif
+        endif
 
-  "resolve charset from header and body(META)
-  let b:charset = &encoding
-  let header = split(s:system(substitute(cmdline, "-halfdump", "-dump_head", "")), '\n')
-  if s:resolveCharset(header) == 0
-    let body = split(s:system(substitute(cmdline, "-halfdump", "-dump_source", "")), '\n')
-    let max_analize_line = 20
-    if len(body) < max_analize_line
-      let max_analize_line = len(body) - 1
-    endif
-    call s:resolveCharset(body[0 : max_analize_line])
-  endif
+        let @a=l:cmdline
+        "execute halfdump
+        " let l:outputs = split(s:neglectNeedlessTags(s:system(l:cmdline)), '\n')
+        " halfdump don't dump raw files like md
+        let l:outputs = split(s:neglectNeedlessTags(s:system(substitute(l:cmdline, "-halfdump", "-dump", ""))), '\n')
 
-  "execute halfdump
-  let outputs = split(s:neglectNeedlessTags(s:system(cmdline)), '\n')
+        "add outputs to url-history
+        if len(b:history) - 1 > b:history_index
+                call remove(b:history, b:history_index+1, -1)
+        endif
+        call add(b:history, {'url':url, 'outputs':outputs} )
+        let b:history_index = len(b:history) - 1
+        if b:history_index >= g:w3m_options['max_cache_page_num']
+                call remove(b:history, 0, 0)
+                let b:history_index = len(b:history) - 1
+        endif
 
-  "do filter
-  if use_filter == 1
-    if has_key(se, 'filter')
-      let outputs = se.filter(outputs)
-    endif
-  endif
+        call s:openCurrentHistory()
 
-  "add outputs to url-history
-  if len(b:history) - 1 > b:history_index
-    call remove(b:history, b:history_index+1, -1)
-  endif
-  call add(b:history, {'url':url, 'outputs':outputs} )
-  let b:history_index = len(b:history) - 1
-  if b:history_index >= g:w3m#max_cache_page_num
-    call remove(b:history, 0, 0)
-    let b:history_index = len(b:history) - 1
-  endif
+        "add global history
+        let title = b:history[b:history_index].title
+        call w3m#history#Regist(title, a:000)
 
-  call s:openCurrentHistory()
-
-  "add global history
-  let title = b:history[b:history_index].title
-  call w3m#history#Regist(title, a:000)
-
-  "move to anchor
-  if anchor != ''
-    call s:moveToAnchor(anchor)
-  endif
+        "move to anchor
+        if anchor != ''
+                call s:moveToAnchor(anchor)
+        endif
 endfunction
 
 function! s:resolveCharset(header)
-  let ret = 0
-  let header_charset = filter(a:header, 'v:val =~ "charset="')
-  if len(header_charset) > 0
-    let b:charset = substitute(substitute(header_charset[0], '^.*\<charset=', '', ''), '[">].*$', '', '')
-    let ret = 1
-  endif
-  return ret
+        let ret = 1
+        let header_charset = filter(a:header, 'v:val =~ "charset="')
+        if len(header_charset) > 0
+                let b:charset = substitute(substitute(header_charset[0], '^.*\<charset=', '', ''), '[">].*$', '', '')
+                let ret = 0
+        endif
+        return ret
 endfunction
 
 function! w3m#Back()
   if b:history_index <= 0
     return
   endif
-  let b:history[b:history_index].curpos = [ line('.'), col('.') ]
+  let b:history[b:history_index].curpos = [line('.'), col('.')]
   let b:history_index -= 1
   call s:openCurrentHistory()
 endfunction
@@ -369,13 +234,13 @@ function! w3m#Forward()
   if b:history_index >= len(b:history) - 1
     return
   endif
-  let b:history[b:history_index].curpos = [ line('.'), col('.') ]
+  let b:history[b:history_index].curpos = [line('.'), col('.')]
   let b:history_index += 1
   call s:openCurrentHistory()
 endfunction
 
 function! w3m#PrevLink()
-  let [cl,cc] = [ line('.'), col('.') ]
+  let [cl,cc] = [line('.'), col('.')]
   let tstart = -1
   let tidx = 0
   for tag in b:tag_list
@@ -396,7 +261,7 @@ function! w3m#PrevLink()
 endfunction
 
 function! w3m#NextLink()
-  let [cl,cc] = [ line('.'), col('.') ]
+  let [cl,cc] = [line('.'), col('.')]
   let tstart = -1
   let tidx = 0
   for tag in b:tag_list
@@ -417,7 +282,7 @@ function! w3m#NextLink()
 endfunction
 
 function! w3m#Click(shift, ctrl)
-  let [cl,cc] = [ line('.'), col('.') ]
+  let [cl,cc] = [line('.'), col('.')]
   let tstart = -1
   let tidx = 0
   for tag in b:tag_list
@@ -456,7 +321,7 @@ endfunction
 
 function! s:post(url, file)
   let s:tmp_option = '-post ' . a:file
-  call w3m#Open(g:w3m#OPEN_NORMAL, a:url)
+  call w3m#Open(a:url)
   let s:tmp_option = ''
   call s:message('post ok')
 endfunction
@@ -471,7 +336,7 @@ function! s:openCurrentHistory()
   call setline(1, b:display_lines)
   call w3m#ShowTitle()
   call s:applySyntax()
-  if has_key(b:history[b:history_index], 'curpos') 
+  if has_key(b:history[b:history_index], 'curpos')
     let [cl,cc] = b:history[b:history_index].curpos
     call cursor(cl, cc)
   endif
@@ -627,102 +492,35 @@ function! s:analizeTag(tag, attr)
 endfunction
 
 function! s:prepare_buffer()
-  if !exists('b:w3m_bufname')
-    let id = 1
-    while buflisted(s:w3m_title.'-'.id)
-      let id += 1
-    endwhile
-    let bufname = s:w3m_title.'-'.id
-    silent edit `=bufname`
+        if exists('b:w3m_bufname')
+                return
+        endif
+        let l:id = 1
+        while buflisted('w3m-' . id)
+                let l:id += 1
+        endwhile
+        let l:bufname = 'w3m-' . id
+        " :h `=
+        silent edit `=bufname`
 
-    let b:w3m_bufname = s:w3m_title.'-'.id
-    let b:last_url = ''
-    let b:history_index = 0
-    let b:history = []
-    let b:display_lines = []
-    let b:tag_list = []
-    let b:anchor_list = []
-    let b:form_list = []
-    let b:click_with_shift = 0
-    let b:click_with_ctrl = 0
-    let b:last_match_id = -1
-    let b:enable_syntax = 1
+        " now in w3m buffer and can set b:var
+        let b:w3m_bufname = l:bufname
+        let b:last_url = ''
+        let b:history_index = 0
+        let b:history = []
+        let b:display_lines = []
+        let b:tag_list = []
+        let b:anchor_list = []
+        let b:form_list = []
+        let b:click_with_shift = 0
+        let b:click_with_ctrl = 0
+        let b:last_match_id = -1
+        let b:enable_syntax = 1
 
-    call s:keymap()
-    call s:default_highligh()
-
-    augroup w3m
-      au BufWinEnter <buffer> silent! call w3m#BufWinEnter()
-      au BufWinLeave <buffer> silent! call w3m#BufWinLeave()
-    augroup END
-  endif
-endfunction
-
-function! s:keymap()
-  nnoremap <buffer><Plug>(w3m-click)         :<C-u>call w3m#Click(0, 0)<CR>
-  nnoremap <buffer><Plug>(w3m-shift-click)   :<C-u>call w3m#Click(1, 0)<CR>
-  nnoremap <buffer><Plug>(w3m-shift-ctrl-click)  :<C-u>call w3m#Click(1, 1)<CR>
-  nnoremap <buffer><Plug>(w3m-address-bar)   :<C-u>call w3m#EditAddress()<CR>
-  nnoremap <buffer><Plug>(w3m-next-link)     :<C-u>call w3m#NextLink()<CR>
-  nnoremap <buffer><Plug>(w3m-prev-link)     :<C-u>call w3m#PrevLink()<CR>
-  nnoremap <buffer><Plug>(w3m-back)          :<C-u>call w3m#Back()<CR>
-  nnoremap <buffer><Plug>(w3m-forward)       :<C-u>call w3m#Forward()<CR>
-  nnoremap <buffer><Plug>(w3m-show-link)     :<C-u>call w3m#CheckUnderCursor()<CR>
-  nnoremap <buffer><Plug>(w3m-show-title)    :<C-u>call w3m#ShowTitle()<CR>
-  nnoremap <buffer><Plug>(w3m-search-start)  :<C-u>call w3m#MatchSearchStart('/')<CR>
-  nnoremap <buffer><Plug>(w3m-search-end)    :<C-u>call w3m#MatchSearchEnd()<CR>
-  nnoremap <buffer><Plug>(w3m-hit-a-hint)    :<C-u>call w3m#HitAHintStart()<CR>
-  nnoremap <buffer><Plug>(w3m-syntax-on)     :<C-u>call w3m#ChangeSyntaxOnOff(1)<CR>
-  nnoremap <buffer><Plug>(w3m-syntax-off)    :<C-u>call w3m#ChangeSyntaxOnOff(0)<CR>
-  nnoremap <buffer><Plug>(w3m-toggle-syntax) :<C-u>call w3m#ToggleSyntax()<CR>
-  nnoremap <buffer><Plug>(w3m-toggle-use-cookie) :<C-u>call w3m#ToggleUseCookie()<CR>
-
-  if !exists('g:w3m#disable_default_keymap') || g:w3m#disable_default_keymap == 0
-    nmap <buffer><LeftMouse> <LeftMouse><Plug>(w3m-click)
-    nmap <buffer><CR>        <Plug>(w3m-click)
-    nmap <buffer><S-CR>      <Plug>(w3m-shift-click)
-    nmap <buffer><C-S-CR>    <Plug>(w3m-shift-ctrl-click)
-    nmap <buffer><TAB>       <Plug>(w3m-next-link)
-    nmap <buffer><S-TAB>     <Plug>(w3m-prev-link)
-    nmap <buffer><BS>        <Plug>(w3m-back)
-    nmap <buffer><A-LEFT>    <Plug>(w3m-back)
-    nmap <buffer><A-RIGHT>   <Plug>(w3m-forward)
-    nmap <buffer>s           <Plug>(w3m-toggle-syntax)
-    nmap <buffer>c           <Plug>(w3m-toggle-use-cookie)
-    nmap <buffer>=           <Plug>(w3m-show-link)
-    nmap <buffer>/           <Plug>(w3m-search-start)
-    nmap <buffer>*           *<Plug>(w3m-search-end)
-    nmap <buffer>#           #<Plug>(w3m-search-end)
-    nmap <buffer><m-d>       <Plug>(w3m-address-bar)
-    exe 'nmap <buffer>' . g:w3m#hit_a_hint_key . ' <Plug>(w3m-hit-a-hint)'
-  endif
-endfunction
-
-function! s:default_highligh()
-  if !hlexists('w3mBold')
-    hi w3mBold gui=bold
-  endif
-  if !hlexists('w3mUnderline')
-    hi w3mUnderline gui=underline
-  endif
-  if !hlexists('w3mInput')
-    highlight! link w3mInput String
-  endif
-  if !hlexists('w3mSubmit')
-    highlight! link w3mSubmit Special
-  endif
-  if !hlexists('w3mLink')
-    highlight! link w3mLink Function
-  endif
-  if !hlexists('w3mAnchor')
-    highlight! link w3mAnchor Label
-  endif
-  if !hlexists('w3mLinkHover')
-    highlight! link w3mLinkHover SpecialKey
-  endif
-  if !hlexists('w3mHitAHint')
-    highlight! link w3mHitAHint Question
-  endif
+        augroup w3m
+                au BufWinEnter <buffer> silent! call w3m#BufWinEnter()
+                au BufWinLeave <buffer> silent! call w3m#BufWinLeave()
+        augroup END
 endfunction
 
 function! s:applySyntax()
@@ -798,31 +596,27 @@ function! s:applySyntax()
 endfunction
 
 " apply hover-links function
-if exists('g:w3m#set_hover_on') && g:w3m#set_hover_on > 0
-  let g:w3m#set_hover_on = 1
+if g:w3m_options['set_hover_on'] > 0
+  let g:w3m_options['set_hover_on'] = 1
   if has("autocmd")
-    if g:w3m#hover_delay_time == 0
-      " everytime the cursor moves in the buffer 
+    if g:w3m_options['hover_delay_time'] == 0
+      " everytime the cursor moves in the buffer
       " normal mode is forcesd by default, so only check normal mode
       au! CursorMoved w3m-*  call s:applyHoverHighlight()
     else
       au! CursorMoved w3m-*  call s:delayHoverHighlight()
     endif
   else
-    unlet g:w3m#set_hover_on
+    let g:w3m_options['set_hover_on'] = 0
   endif
   function! s:delayHoverHighlight()
     if !exists('g:w3m#updatetime_backup')
       let g:w3m#updatetime_backup = &updatetime
-      let &updatetime = g:w3m#hover_delay_time
+      let &updatetime = g:w3m_options['hover_delay_time']
       au! CursorHold w3m-*  call s:applyHoverHighlight()
     endif
   endfunction
   function! s:applyHoverHighlight()
-    if !exists('g:w3m#set_hover_on') || g:w3m#set_hover_on < 1 
-      " hover-links is turned OFF
-      return
-    endif
     let [cline,ccol] = [ line('.'), col('.') ]
     if exists("b:match_hover_anchor") && b:match_hover_anchor.line == cline && b:match_hover_anchor.startCol <=  ccol && b:match_hover_anchor.endCol > ccol
       " the link under the cursor has not changed
@@ -843,7 +637,7 @@ if exists('g:w3m#set_hover_on') && g:w3m#set_hover_on > 0
         break
       endif
     endfor
-    if exists('b:match_hover_id') 
+    if exists('b:match_hover_id')
       " restore color
       silent! call matchdelete(b:match_hover_id)
       unlet b:match_hover_id
@@ -895,9 +689,7 @@ function! s:tag_a(tidx)
       endif
 
       if s:isHttpURL(url)
-        call w3m#Open(open_mode, url)
-      else
-        call w3m#Open(open_mode, 'local', url)
+        call w3m#Open(url)
       endif
     endif
     return 1
@@ -913,7 +705,7 @@ function! s:tag_input(tidx)
   endif
   let type = b:tag_list[a:tidx].attr.type
 
-  try 
+  try
     call s:tag_input_{tolower(type)}(a:tidx)
   catch /^Vim\%((\a\+)\)\=:E117/
   endtry
@@ -933,12 +725,12 @@ function! s:tag_input_submit(tidx)
   let fid = 0
   while idx >= 0
     if b:tag_list[idx].type == s:TAG_START && stridx(b:tag_list[idx].tagname, 'form') == 0
-     if has_key(b:tag_list[idx].attr,'action') 
+     if has_key(b:tag_list[idx].attr,'action')
        let url = s:resolveUrl(b:tag_list[idx].attr.action)
-       if has_key(b:tag_list[idx].attr,'method') 
+       if has_key(b:tag_list[idx].attr,'method')
          let action = b:tag_list[idx].attr.method
        endif
-       if has_key(b:tag_list[idx].attr,'fid') 
+       if has_key(b:tag_list[idx].attr,'fid')
          let fid = b:tag_list[idx].attr.fid
        endif
        break
@@ -950,7 +742,7 @@ function! s:tag_input_submit(tidx)
   if url != ''
     if action ==? 'GET'
       let query = w3m#buildQueryString(fid, a:tidx, 1)
-      call w3m#Open(g:w3m#OPEN_NORMAL, url . query)
+      call w3m#Open(url . query)
     elseif action ==? 'POST'
       let file = w3m#generatePostFile(fid, a:tidx)
       call s:post(url, file)
@@ -995,7 +787,7 @@ endfunction
 
 function! s:tag_input_radio(tidx)
   redraw
-  " ëºÇÃìØÇ∂nameÇÃecheckedÇÉäÉZÉbÉg
+  " ‰ªñ„ÅÆÂêå„Åòname„ÅÆechecked„Çí„É™„Çª„ÉÉ„Éà
   for item in b:form_list
     if has_key(item.attr, 'type') && item.attr.type ==? 'radio'
       let item.edited = 1
@@ -1094,27 +886,23 @@ function! s:tag_input_select(tidx)
   call s:applyEditedInputValues()
 endfunction
 
-" ---
-
 function! s:create_command(url, cols)
-  let command_list = [ g:w3m#command, s:tmp_option, g:w3m#option, '-cols', a:cols]
-
-  if g:w3m#option_use_cookie != -1
-    call add(command_list, '-o use_cookie=' . g:w3m#option_use_cookie)
-  endif
-  if g:w3m#option_accept_cookie != -1
-    call add(command_list, '-o accept_cookie=' . g:w3m#option_accept_cookie)
-  endif
-  if g:w3m#option_accept_bad_cookie != -1
-    call add(command_list, '-o accept_bad_cookie=' . g:w3m#option_accept_bad_cookie)
-  endif
-  if g:user_agent != ''
-    call add(command_list, '-o user_agent="' . g:user_agent . '"')
-  endif
-
-  call add(command_list, '"' . a:url . '"')
-  let cmdline = join(command_list, ' ') . s:abandon_error
-  return cmdline
+        let command_list = [ g:w3m_options['command'], s:tmp_option, g:w3m_options['option'], '-cols', a:cols]
+        if g:w3m_options['use_cookie'] != -1
+                call add(command_list, '-o use_cookie=' . g:w3m_options['use_cookie'])
+        endif
+        if g:w3m_options['accept_cookie'] != -1
+                call add(command_list, '-o accept_cookie=' . g:w3m_options['accept_cookie'])
+        endif
+        if g:w3m_options['accept_bad_cookie'] != -1
+                call add(command_list, '-o accept_bad_cookie=' . g:w3m_options['accept_bad_cookie'])
+        endif
+        if g:w3m_options['user_agent'] != ''
+                call add(command_list, '-o user_agent=''' . g:w3m_options['user_agent'] . '''')
+        endif
+        call add(command_list, '''' . a:url . '''')
+        let cmdline = join(command_list, ' ') . ' 2>/dev/null'
+        return cmdline
 endfunction
 
 function! s:resolveUrl(url)
@@ -1261,7 +1049,7 @@ function! s:applyEditedInputValues()
         else
           let value = ' '
         endif
-      else 
+      else
         if has_key(item.attr, 'checked')
           let value = '*'
         else
@@ -1386,17 +1174,17 @@ function! s:decordeEntRef(str)
   let str = substitute(str, '&quot;',   '"', 'g')
   let str = substitute(str, '&#40;',    '(', 'g')
   let str = substitute(str, '&#41;',    ')', 'g')
-  let str = substitute(str, '&laquo;',  'Å·', 'g')
-  let str = substitute(str, '&raquo;',  'Å‚', 'g')
+  let str = substitute(str, '&laquo;',  '‚â™', 'g')
+  let str = substitute(str, '&raquo;',  '‚â´', 'g')
   let str = substitute(str, '&lt;',     '<', 'g')
   let str = substitute(str, '&gt;',     '>', 'g')
   let str = substitute(str, '&amp;',    '\&','g')
   let str = substitute(str, '&yen;',    '\\','g')
-  let str = substitute(str, '&cent;',   'Åë','g')
+  let str = substitute(str, '&cent;',   '¬¢','g')
   let str = substitute(str, '&copy;',   'c', 'g')
-  let str = substitute(str, '&middot;', 'ÅE','g')
-  let str = substitute(str, '&mdash;',  'Å\','g')
-  let str = substitute(str, '&ndash;',  'Å\','g')
+  let str = substitute(str, '&middot;', '„Éª','g')
+  let str = substitute(str, '&mdash;',  '‚Äï','g')
+  let str = substitute(str, '&ndash;',  '‚Äï','g')
   let str = substitute(str, '&apos;',   "'", 'g')
   return    substitute(str, '&nbsp;',   ' ', 'g')
 endfunction
@@ -1409,18 +1197,14 @@ function! s:message(msg)
 endfunction
 
 function! s:system(string)
-  if exists('*vimproc#system()') && g:w3m#disable_vimproc == 0
-    return vimproc#system(a:string)
-  else
-    return system(a:string)
-  endif
+        return system(a:string)
 endfunction
 
 function! s:downloadFile(url)
-  if executable(g:w3m#wget_command)
+  if executable(g:w3m_options['wget_command'])
     let output_dir = input("save dir: ", expand("$HOME"), "dir")
     call s:message('download ' . a:url)
-    echo s:system(g:w3m#wget_command . ' -P "' . output_dir . '" ' . a:url)
+    echo s:system(g:w3m_options['wget_command'] . ' -P "' . output_dir . '" ' . a:url)
   endif
 endfunction
 
@@ -1430,7 +1214,7 @@ function! s:is_download_target(href)
     return 0
   endif
   let ext = strpart(a:href, dot+1)
-  if index(g:w3m#download_ext, tolower(ext)) >= 0
+  if index(g:w3m_options['download_ext'], tolower(ext)) >= 0
     return 1
   endif
   return 0
@@ -1440,54 +1224,73 @@ function! s:moveToAnchor(href)
   let aname = a:href[1:]
   for tag in b:tag_list
     if has_key(tag.attr, 'name') && tag.attr.name ==? aname
-      call cursor(tag.line, tag.col) 
+      call cursor(tag.line, tag.col)
       break
     endif
   endfor
 endfunction
-
+" element detect {{{
 function! s:is_anchor(href)
-  if a:href[0] ==? '#'
-    return 1
-  endif
-  return 0
+        return a:href[0] ==? '#'
 endfunction
-
 function! s:is_tag_input_image_submit(tag)
-  if a:tag.tagname ==? 'input_alt'
-    if has_key(a:tag.attr,'type') && a:tag.attr.type ==? 'image'
-      if has_key(a:tag.attr,'value') && a:tag.attr.value ==? 'submit'
-        return 1
-      endif
-    endif
-  endif
-  return 0
+        return a:tag.tagname ==? 'input_alt'
+                        \ && has_key(a:tag.attr,'type') && a:tag.attr.type ==? 'image'
+                        \ && has_key(a:tag.attr,'value') && a:tag.attr.value ==? 'submit'
 endfunction
-
 function! s:is_editable_tag(tag)
-  if has_key(a:tag.attr,'name') && has_key(a:tag.attr,'type') && a:tag.tagname ==? 'input_alt'
-    if a:tag.attr.type ==? 'text' || a:tag.attr.type ==? 'textarea' || a:tag.attr.type ==? 'select'
-      return 1
-    endif
-  endif
-  return 0
+        return has_key(a:tag.attr,'name') && has_key(a:tag.attr,'type') && a:tag.tagname ==? 'input_alt'
+                        \ && (a:tag.attr.type ==? 'text' || a:tag.attr.type ==? 'textarea' || a:tag.attr.type ==? 'select')
 endfunction
-
 function! s:is_radio_or_checkbox(tag)
-  if has_key(a:tag.attr,'name') && has_key(a:tag.attr,'type') && a:tag.tagname ==? 'input_alt'
-    if a:tag.attr.type ==? 'radio' || a:tag.attr.type ==? 'checkbox'
-      return 1
-    endif
-  endif
-  return 0
+        return has_key(a:tag.attr,'name') && has_key(a:tag.attr,'type') && a:tag.tagname ==? 'input_alt'
+                        \ && (a:tag.attr.type ==? 'radio' || a:tag.attr.type ==? 'checkbox')
 endfunction
-
 function! s:is_tag_tabstop(tag)
-  if a:tag.tagname ==? 'a' || a:tag.tagname ==? 'input_alt'
-    return 1
-  endif
-  return 0
+        return a:tag.tagname ==? 'a' || a:tag.tagname ==? 'input_alt'
 endfunction
+"}}}
+" completion {{{
+function! w3m#useragent_completion(ArgLead, CmdLine, CursorPos)
+        let l:comp = []
+        let l:leader = '^' . a:ArgLead
+        for key in keys(g:w3m_useragents)
+                if key =~? l:leader
+                        let l:comp += [key]
+                endif
+        endfor
+        return l:comp
+endfunction
+function! g:w3m#searchengine_completion(ArgLead, CmdLine, CursorPos)
+        let l:comp = []
+        if len(split(a:CmdLine, ' ')) == 2
+                let l:leader = '^' . a:ArgLead
+                for key in keys(g:w3m_searchengines)
+                        if key =~? l:leader
+                                let l:comp += [key]
+                        endif
+                endfor
+        endif
+        return l:comp
+endfunction
+"}}}
+
+nnoremap <Plug>(w3m-click)             :<C-u>call w3m#Click(0, 0)<CR>
+nnoremap <Plug>(w3m-shift-click)       :<C-u>call w3m#Click(1, 0)<CR>
+nnoremap <Plug>(w3m-shift-ctrl-click)  :<C-u>call w3m#Click(1, 1)<CR>
+nnoremap <Plug>(w3m-address-bar)       :<C-u>call w3m#EditAddress()<CR>
+nnoremap <Plug>(w3m-next-link)         :<C-u>call w3m#NextLink()<CR>
+nnoremap <Plug>(w3m-prev-link)         :<C-u>call w3m#PrevLink()<CR>
+nnoremap <Plug>(w3m-back)              :<C-u>call w3m#Back()<CR>
+nnoremap <Plug>(w3m-forward)           :<C-u>call w3m#Forward()<CR>
+nnoremap <Plug>(w3m-show-link)         :<C-u>call w3m#CheckUnderCursor()<CR>
+nnoremap <Plug>(w3m-show-title)        :<C-u>call w3m#ShowTitle()<CR>
+nnoremap <Plug>(w3m-hit-a-hint)        :<C-u>call w3m#HitAHintStart()<CR>
+nnoremap <Plug>(w3m-syntax-on)         :<C-u>call w3m#ToggleSyntax(1)<CR>
+nnoremap <Plug>(w3m-syntax-off)        :<C-u>call w3m#ToggleSyntax(0)<CR>
+nnoremap <Plug>(w3m-toggle-syntax)     :<C-u>call w3m#ToggleSyntax()<CR>
+nnoremap <Plug>(w3m-toggle-use-cookie) :<C-u>call w3m#ToggleUseCookie()<CR>
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
+" vim: foldmethod=marker
