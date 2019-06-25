@@ -40,5 +40,5 @@ if g:w3m_options['disable_default_keymap'] == 0
         nmap <buffer> c           <Plug>(w3m-toggle-use-cookie)
         nmap <buffer> =           <Plug>(w3m-show-link)
         nmap <buffer> o           <Plug>(w3m-address-bar)
-        execute 'nmap <buffer>' . g:w3m_options['hit_a_hint_key'] . ' <Plug>(w3m-hit-a-hint)'
+        execute 'nmap <buffer> ' . g:w3m_options['hit_a_hint_key'] . ' <Plug>(w3m-hit-a-hint)'
 endif

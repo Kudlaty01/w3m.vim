@@ -1,31 +1,20 @@
 " File: syntax/w3m.vim
-" Last Modified: 2012.04.03
-" Author: yuratomo (twitter @yusetomo)
+" OriginalAuthor: yuratomo (twitter @yusetomo)
+" Author: matsuhav
 
-if version < 700
-  syntax clear
-elseif exists("b:current_syntax")
-  finish
+if exists("b:current_syntax")
+        finish
 endif
 
-syn match	w3mMark /[\*\+\-\#="]/
-syn match	w3mNumber /^ *[0-9]\+\./
-syn match w3mDate /\<[0-9]\{1,4}年[0-9]\{1,2}月[0-9]\{1,2}日/
-syn match w3mBracket1 /「\_.\{-0,30}」/
-syn match w3mBracket2 /『\_.\{-0,30}』/
-syn match w3mBracket3 /【\_.\{-0,30}】/
-syn keyword w3mCopyright Copyright
-syn match w3mUrl contained "\vhttps?://[[:alnum:]][-[:alnum:]]*[[:alnum:]]?(\.[[:alnum:]][-[:alnum:]]*[[:alnum:]]?)*\.[[:alpha:]][-[:alnum:]]*[[:alpha:]]?(:\d+)?(/[^[:space:]]*)?$"
-syn match w3mUrl "http[s]\=://\S*"
+syntax match    w3mMark /[\*\+\-\#="]/
+syntax match    w3mNumber /^ *[0-9]\+\./
+syntax keyword w3mCopyright Copyright
+syntax match w3mUrl contained "\vhttps?://[[:alnum:]][-[:alnum:]]*[[:alnum:]]?(\.[[:alnum:]][-[:alnum:]]*[[:alnum:]]?)*\.[[:alpha:]][-[:alnum:]]*[[:alpha:]]?(:\d+)?(/[^[:space:]]*)?$"
+syntax match w3mUrl "https\?://\S*"
 
-hi default link w3mMark Function
-hi default link w3mNumber Number
-hi default link w3mDate Define
-hi default link w3mBracket1 Macro
-hi default link w3mBracket2 Macro
-hi default link w3mBracket3 Macro
-hi default link w3mCopyright Keyword
-hi default link w3mUrl Comment
-hi default link w3mTitle Comment
+highlight default link w3mMark Function
+highlight default link w3mNumber Number
+highlight default link w3mCopyright Keyword
+highlight default link w3mUrl Comment
 
 let b:current_syntax = 'w3m'

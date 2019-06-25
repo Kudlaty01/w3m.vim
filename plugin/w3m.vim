@@ -33,6 +33,8 @@ let g:w3m_options = {
                 \ 'hover_delay_time': 100,
                 \ 'disable_default_keymap': 0,
                 \ 'disable_default_highlight': 0,
+                \ 'historyfile': $HOME . '/.vim_w3m_hist',
+                \ 'historylist': [],
                 \ }
 if exists('g:w3m_config')
         call extend(g:w3m_options, g:w3m_config)

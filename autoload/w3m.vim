@@ -203,7 +203,7 @@ function! w3m#Open(...)
 
         "add global history
         let title = b:history[b:history_index].title
-        call w3m#history#Regist(title, a:000)
+        call w3m#history#Add(title, a:000)
 
         "move to anchor
         if anchor != ''
